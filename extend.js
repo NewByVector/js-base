@@ -54,14 +54,26 @@ child.sayName();
 //拷贝继承
 function extend(newObj, oldObj, deep) {
     var i;
+    var src;
+    var copy;
+    var clone;
     newObj = newObj || {};
 
     for (i in oldObj) {
-        if (deep && typeof oldObj[i] === 'object') {
-            newObj[i] = Array.isArray(oldObj[i]) ? [] : {};
-            extend(newObj[i], oldObj[i], true);
+        src = newObj[i];
+        copy = oldObj[i];
+
+        if (deep && typeof copy === 'object') {
+            if (Array.isArray(copy)) {
+                //处理数组
+                clone = src && Array.isArray(src) ? src : [];
+            } else {
+                //处理对象
+                clone = src ? src : {};
+            }
+            newObj[i] =  extend(clone, copy, deep);
         } else {
-            newObj[i] = oldObj[i];
+            newObj[i] = copy;
         }
     }
 
