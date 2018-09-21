@@ -1,23 +1,26 @@
-//实现promise
+//实现promise功能
 
 //创建promise对象
 function createPromise() {
     return {
         value: null,
-        state: 'pending',  //pending fulfilled rejected
-        dependencies: []
-    }
+        state: 'pending',
+        dependencies: [],
+        then: function (onSuccess, onError) {
+            return depend(this, onSuccess, onError);
+        }
+    };
 }
+
 //定义依赖关系
 function depend(promise, onSuccess, onError) {
-    var result = createPromise();
+    let result = createPromise();
 
     if (promise.state === 'pending') {
         promise.dependencies.push({
             fulfilled: function (value) {
-                depend(onSuccess(value), 
-                function (newValue) {
-                    fulfil(result, newValue);
+                depend(onSuccess(value), function (newValue) {
+                    resolve(result, newValue);
                     return createPromise();
                 }, function (newError) {
                     reject(result, newError);
@@ -25,9 +28,8 @@ function depend(promise, onSuccess, onError) {
                 });
             },
             rejected: function (value) {
-                depend(onError(value), 
-                function (newValue) {
-                    fulfil(result, newValue);
+                depend(onError(value), function (newValue) {
+                    resolve(result, newValue);
                     return createPromise();
                 }, function (newError) {
                     reject(result, newError);
@@ -37,18 +39,16 @@ function depend(promise, onSuccess, onError) {
         });
     } else {
         if (promise.state === 'fulfilled') {
-            depend(onSuccess(promise.value),
-            function (newValue) {
-                fulfil(result, newValue);
+            depend(onSuccess(promise.value), function (newValue) {
+                resolve(result, newValue);
                 return createPromise();
             }, function (newError) {
                 reject(result, newError);
                 return createPromise();
             });
         } else if (promise.state === 'rejected') {
-            depend(onError(promise.value),
-            function (newValue) {
-                fulfil(result, newValue);
+            depend(onError(promise.value),function (newValue) {
+                resolve(result, newValue);
                 return createPromise();
             }, function (newError) {
                 reject(result, newError);
@@ -59,8 +59,9 @@ function depend(promise, onSuccess, onError) {
 
     return result;
 }
-//resolve promise
-function fulfil(promise, value) {
+
+//resolve
+function resolve(promise, value) {
     if (promise.state !== 'pending') {
         throw new Error('Trying to reject a non-pending promise!');
     } else {
@@ -73,7 +74,8 @@ function fulfil(promise, value) {
         });
     }
 }
-//reject promise
+
+//reject
 function reject(promise, error) {
     if (promise.state !== 'pending') {
         throw new Error('Trying to reject a non-pending promise!');
@@ -87,7 +89,8 @@ function reject(promise, error) {
         });
     }
 }
-//promise all
+
+//promise.all
 function waitAll(promises, onSuccess, onError) {
     var values = new Array(promises.length);
     var pending = values.length;
@@ -103,7 +106,7 @@ function waitAll(promises, onSuccess, onError) {
                 pending = pending - 1;
                 if (pending === 0) {
                     resolved = true;
-                    fulfil(result, values);
+                    resolve(result, values);
                 }
             }
             return createPromise();
@@ -119,21 +122,36 @@ function waitAll(promises, onSuccess, onError) {
     return result;
 }
 
-//测试
-var readFile = function () {
-    var promise = createPromise();
+let readFile = function () {
+    let promise = createPromise();
     setTimeout(function () {
-        fulfil(promise, 'ABC');
+        console.log('read file over');
+        resolve(promise, 'abc');
     }, 2000);
     return promise;
 };
-var writeFile = function () {
-    var promise = createPromise();
+let writeFile = function () {
+    let promise = createPromise();
     setTimeout(function () {
-        fulfil(promise, 'DEF');
-    }, 1000);
+        console.log('write file over');
+        resolve(promise,'def');
+    }, 3000);
     return promise;
-};
+}
+// readFile().then(function (resp) {
+//     return writeFile(resp);
+// }, function (error) {
+//     console.log(error);
+//     return createPromise();
+// })
+// .then(function () {
+//     console.log('on success!');
+//     return createPromise();
+// }, function () {
+//     console.log('on error!');
+//     return createPromise();
+// });
+
 waitAll([readFile(), writeFile()], function (values) {
     console.log(values);
     return createPromise();
